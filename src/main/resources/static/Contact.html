@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>个人通讯录系统</title>
+    <!-- 引入Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <!-- 引入jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2>个人通讯录(测试版)</h2>
+
+    <!-- 添加联系人的表单 -->
+    <div class="form-group1">
+        <label for="name">姓名:</label>
+        <input type="text" class="form-control" id="name" placeholder="输入姓名">
+    </div>
+    <div class="form-group1">
+        <label for="address">地址:</label>
+        <input type="text" class="form-control" id="address" placeholder="输入地址">
+    </div>
+    <div class="form-group1">
+        <label for="tel">电话号码:</label>
+        <input type="text" class="form-control" id="tel" placeholder="输入电话号码">
+    </div>
+    <button id="addContact" class="btn btn-primary">添加联系人</button>
+
+    <h3 class="mt-4">联系人列表</h3>
+    <table id="contactList" class="table">
+        <thead>
+        <tr>
+            <th>姓名</th>
+            <th>地址</th>
+            <th>电话号码</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- 联系人列表将在这里动态生成 -->
+        </tbody>
+    </table>
+</div>
+
+<!-- 更新联系人的模态框 -->
+<div class="modal fade" id="updateContactModal" tabindex="-1" role="dialog" aria-labelledby="updateContactModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateContactModalLabel">更新联系人信息</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="updateContactForm">
+                    <div class="form-group">
+                        <label for="updateName">姓名:</label>
+                        <input type="text" class="form-control" id="updateName">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateAddress">地址:</label>
+                        <input type="text" class="form-control" id="updateAddress">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateTel">电话号码:</label>
+                        <input type="text" class="form-control" id="updateTel">
+                    </div>
+                    <input type="hidden" id="updateId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                <button type="button" id="saveContactChanges" class="btn btn-primary">保存更改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // 添加联系人
+        $('#addContact').click(function() {
+            var contact = {
+                name: $('#name').val(),
+                address: $('#address').val(),
+                tel: $('#tel').val()
+            };
+
+            $.ajax({
+                url: '/contacts',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(contact),
+                success: function(contact) {
+                    loadContacts(); // 重新加载联系人列表
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        });
+
+        // 获取所有联系人并生成表格行
+        function loadContacts() {
+            $.ajax({
+                url: '/contacts',
+                type: 'GET',
+                success: function(contacts) {
+                    var contactsHtml = contacts.map(function(contact) {
+                        return `
+                <tr>
+                    <td>${contact.name}</td>
+                    <td>${contact.address}</td>
+                    <td>${contact.tel}</td>
+                    <td>
+                        <button class="btn btn-secondary update-btn" data-id="${contact.id}">更新</button>
+                        <button class="btn btn-danger delete-btn" data-id="${contact.id}">删除</button>
+                    </td>
+                </tr>`;
+                    }).join('');
+                    $('#contactList tbody').html(contactsHtml);
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+
+        // 绑定删除操作到删除按钮
+        $('#contactList tbody').on('click', '.delete-btn', function() {
+            var contactId = $(this).data('id');
+            $.ajax({
+                url: `/contacts/${contactId}`,
+                type: 'DELETE',
+                success: function(result) {
+                    loadContacts(); // 重新加载联系人列表
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        });
+
+        // 绑定更新操作到更新按钮
+        $('#contactList tbody').on('click', '.update-btn', function() {
+            var contactId = $(this).data('id');
+            getContactInfoById(contactId);
+        });
+
+        // 获取单个联系人信息并填充到更新表单
+        function getContactInfoById(contactId) {
+            $.ajax({
+                url: '/contacts/' + contactId,
+                type: 'GET',
+                success: function(contact) {
+                    $('#updateName').val(contact.name);
+                    $('#updateAddress').val(contact.address);
+                    $('#updateTel').val(contact.tel);
+                    $('#updateId').val(contact.id);
+                    $('#updateContactModal').modal('show');
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+
+        // 保存更改按钮的逻辑
+        $('#saveContactChanges').click(function() {
+            var updatedContact = {
+                id: $('#updateId').val(),
+                name: $('#updateName').val(),
+                address: $('#updateAddress').val(),
+                tel: $('#updateTel').val()
+            };
+
+            $.ajax({
+                url: '/contacts/' + updatedContact.id,
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(updatedContact),
+                success: function(response) {
+                    $('#updateContactModal').modal('hide');
+                    loadContacts();
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        });
+
+        // 初始化加载所有联系人
+        loadContacts();
+    });
+</script>
+
+<!-- 引入Bootstrap的JS组件 -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.bundle.min.js"></script>
+<style>
+    .form-group1{
+        display: inline-block;
+        margin: 10px 20px;
+        width:300px;
+    }
+</style>
+</body>
+</html>
