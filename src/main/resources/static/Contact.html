@@ -129,7 +129,7 @@
             });
         }
 
-        // 绑定删除操作到删除按钮
+        /*// 绑定删除操作到删除按钮
         $('#contactList tbody').on('click', '.delete-btn', function() {
             var contactId = $(this).data('id');
             $.ajax({
@@ -142,7 +142,32 @@
                     console.error(error);
                 }
             });
+        });*/
+
+        // 绑定删除操作到删除按钮
+        $('#contactList tbody').on('click', '.delete-btn', function() {
+            var contactId = $(this).data('id');
+            // 弹出确认对话框
+            var userConfirmed = confirm("确定要删除这个联系人吗？");
+
+            // 当用户点击“确定”时，userConfirmed 为 true
+            if (userConfirmed) {
+                $.ajax({
+                    url: `/contacts/${contactId}`,
+                    type: 'DELETE',
+                    success: function(result) {
+                        loadContacts(); // 重新加载联系人列表
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            } else {
+                // 用户点击“取消”时，不执行任何操作
+                console.log('用户取消了删除操作。');
+            }
         });
+
 
         // 绑定更新操作到更新按钮
         $('#contactList tbody').on('click', '.update-btn', function() {
